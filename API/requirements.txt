@@ -1,11 +1,12 @@
-Flask==1.1.2
+Flask==3.0.2
 Flask_Cors==4.0.0
 nltk==3.8.1
 openai==0.27.8
 pandas==1.4.2
 python-dotenv==1.0.1
 rdflib==7.0.0
-spacy==3.4.1
+spacy==3.7.4
 SPARQLWrapper==2.0.0
 SPARQLWrapper==2.0.0
 Whoosh==2.7.4
+

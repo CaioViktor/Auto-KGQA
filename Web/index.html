@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ChatBot</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.2/jquery.min.js" ></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.1.1/css/all.css">
+    <link rel="stylesheet" href="./src/styles.css" inline="inline" />
+    <script>
+      function feedback(id,value){
+        let url = 'http://0.0.0.0:5000/feedback?question_id='+id+'&value='+value;
+        fetch(url).then(function(response) {
+          alert("Feedback saved successfully");
+          return response.json();
+        }).then(function(data) {
+          console.log(data);
+        }).catch(function(err) {
+          console.log('Fetch Error :-S', err);
+        });
+      }
+    </script>
+  </head>
+
+  <body> 
+      <div id="root"></div>
+      <script src="./src/index.js" inline></script>
+    </div>
+  </body>
+</html>

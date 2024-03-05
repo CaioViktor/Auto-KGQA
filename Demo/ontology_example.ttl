@@ -1,0 +1,317 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix lirb: <https://raw.githubusercontent.com/CaioViktor/LiRB/main/lirb_ontology.ttl/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix tlo: <http://www.arida.ufc.br/ontology/timeline/>.
+@prefix tl: <http://purl.org/NET/c4dm/timeline.owl#>.
+@base <http://www.example.lirb.com/> .
+
+
+
+### Classes
+
+# LivingBeing class
+<LivingBeing> a owl:Class ;
+    rdfs:label "Living Being"@en ;
+    rdfs:comment "An organism that is alive and capable of performing vital functions such as growth, metabolism, and reproduction."@en.
+
+# Person class, subclass of LivingBeing
+<Person> a owl:Class ;
+    rdfs:label "Person"@en ;
+    rdfs:comment "A human being."@en ;
+    rdfs:subClassOf <LivingBeing>;
+    lirb:has_spotlight "true"^^xsd:boolean .
+
+# Male class, subclass of Person
+<Male> a owl:Class ;
+    rdfs:label "Male"@en ;
+    rdfs:comment "A male human being."@en ;
+    rdfs:subClassOf <Person> .
+
+# Female class, subclass of Person
+<Female> a owl:Class ;
+    rdfs:label "Female"@en ;
+    rdfs:comment "A female human being."@en ;
+    rdfs:subClassOf <Person> .
+
+# Animal class, subclass of LivingBeing
+<Animal> a owl:Class ;
+    rdfs:label "Animal"@en ;
+    rdfs:comment "A living organism that is not a human being."@en ;
+    rdfs:subClassOf <LivingBeing> .
+
+# Dog class, subclass of Animal
+<Dog> a owl:Class ;
+    rdfs:label "Dog"@en ;
+    rdfs:comment "A domesticated carnivorous mammal that is kept as a pet or used for various working purposes."@en ;
+    rdfs:subClassOf <Animal> .
+
+# Family class
+<Family> a owl:Class ;
+    rdfs:label "Family"@en ;
+    rdfs:comment "A group of people related by blood, marriage, or adoption."@en .
+#Company class
+<Company> a owl:Class;
+    rdfs:label "Company"@en;
+    rdfs:comment "a commercial business."@en;
+    lirb:has_spotlight "true"^^xsd:boolean.
+
+<WorksAt_> a owl:Class;
+    rdfs:label "WorksAt_"@en;
+    rdfs:comment "N-ary relation to link a person to his company."@en.
+
+### DatatypeProperties
+
+# Property to represent the name of a Person
+<hasName> a owl:DatatypeProperty ;
+    rdfs:subPropertyOf rdfs:label;
+    rdfs:label "has name"@en ;
+    rdfs:comment "The name of a person."@en ;
+    rdfs:domain <Person> ;
+    rdfs:range xsd:string .
+
+# Property to represent the age of a Person
+<hasAge> a owl:DatatypeProperty ;
+    rdfs:label "has age"@en ;
+    rdfs:comment "The age of a person."@en ;
+    rdfs:domain <LivingBeing>;
+    rdfs:range xsd:integer .
+
+# Property to represent the breed of a Dog
+<hasBreed> a owl:DatatypeProperty.
+
+<hasBirthday> a owl:DatatypeProperty ;
+    rdfs:label "has birthday"@en ;
+    rdfs:comment "The birthday of a person."@en ;
+    rdfs:domain <LivingBeing>;
+    rdfs:range xsd:date .
+
+
+### ObjecttypeProperties
+
+# Property to represent the father of a Person
+<hasFather> a owl:ObjectProperty ;
+    rdfs:label "has father"@en ;
+    rdfs:comment "The father of a person."@en ;
+    rdfs:domain <Person> ;
+    rdfs:range <Male> .
+
+# Property to represent the mother of a Person
+<hasMother> a owl:ObjectProperty ;
+    rdfs:label "has mother"@en ;
+    rdfs:comment "The mother of a person."@en ;
+    rdfs:domain <Person> ;
+    rdfs:range <Female> .
+
+# Property to represent the owner of a Dog
+<hasOwner> a owl:ObjectProperty ;
+    rdfs:label "has owner"@en ;
+    rdfs:comment "The owner of a dog."@en ;
+    rdfs:domain <Dog> ;
+    rdfs:range <Person> .
+
+
+
+# Property to represent the knowledge relationship between persons
+<knows> a owl:ObjectProperty,owl:SymmetricProperty ;
+    rdfs:label "knows"@en ;
+    rdfs:comment "The knowledge relationship between persons."@en ;
+    rdfs:domain <Person> ;
+    rdfs:range <Person> .
+
+# Property to represent the membership relationship in a family
+<hasMember> a owl:ObjectProperty ;
+    rdfs:label "has member"@en ;
+    rdfs:comment "The membership relationship in a family."@en ;
+    rdfs:domain <Family> ;
+    rdfs:range <LivingBeing> .
+
+<worksAt> a owl:ObjectProperty ;
+    rdfs:label "works at"@en ;
+    rdfs:comment "indicates the workplace of a person."@en ;
+    rdfs:domain <Person>;
+    rdfs:range <WorksAt_> .
+
+# Define the startedAt datatype property
+<startedAt> rdf:type owl:DatatypeProperty ;
+    rdfs:label "started at" ;
+    rdfs:comment "The date when an employee started working at a company." ;
+    rdfs:domain <WorksAt_> .
+
+# Define the positionInCompany datatype property
+<positionInCompany> rdf:type owl:DatatypeProperty ;
+    rdfs:label "position in the company" ;
+    rdfs:comment "The position or role of an employee in a company." ;
+    rdfs:domain <WorksAt_> .
+
+# Instance of Person class
+<JohnDoe> a <Person>;
+    rdfs:label "John Doe"@en, "Jonny" ;
+    <hasName> "John Doe"@en, "Jonny" ;
+    rdfs:comment "A 25 years old software engineering"@en ;
+    foaf:thumbnail <https://cdn-icons-png.flaticon.com/512/10/10522.png>.
+
+# Instance of Male class
+<Tom> a <Male> ;
+	<hasName> "Tom".
+
+# Instance of Female class
+<Jane> a <Female> ;
+	<hasName> "Jane".
+
+# Instance of Animal class
+<Lion> a <Animal> .
+
+# Instance of Dog class
+<Buddy> a <Dog>;
+    rdfs:label "Buddy";
+    <hasOwner> <JohnDoe>.
+
+# Instance of Family class
+<SmithFamily> a <Family> .
+
+# Instance of living being class
+<LivingBeing1> a <LivingBeing> .
+
+#Instance of Company
+<SoftwareMaker> a <Company>;
+    rdfs:label "Software Maker SA.".
+
+# Declare properties for instances
+
+# JohnDoe has a father Tom and a mother Jane
+<JohnDoe> <hasFather> <Tom> .
+<JohnDoe> <hasMother> <Jane> .
+
+# Tom knows Jane
+<Tom> <knows> <Jane> .
+
+# Buddy is a dog with breed "Labrador"
+<Buddy> <hasBreed> "Labrador"^^xsd:string .
+
+# SmithFamily has members JohnDoe, Jane, and Buddy
+<SmithFamily> <hasMember> <JohnDoe> .
+<SmithFamily> <hasMember> <Jane> .
+<SmithFamily> <hasMember> <Buddy> .
+
+# Define a new person
+<JackSmith> rdf:type <Person> ;
+    rdfs:label "Jack Smith" .
+
+# Define ages for instances of Person class
+<JohnDoe> <hasAge> "25"^^xsd:integer .
+<Tom> <hasAge> "50"^^xsd:integer .
+<Jane> <hasAge> "45"^^xsd:integer .
+
+# Define ages for instances of Animal class
+<Buddy> <hasAge> "5"^^xsd:integer .
+
+# John Doe SameAs
+<JohnDoe> owl:sameAs <John>.
+
+# John properties
+<John> <knows> <SomeOne>.
+
+<SomeOne> <knows> <John>.
+
+
+# Declare that JohnDoe knows JackSmith
+<JohnDoe> <knows> <JackSmith> .
+
+# Declare that JohnDoe knows Jane
+<JohnDoe> <knows> <Jane> .
+
+# Declare that JohnDoe knows Tom
+<JohnDoe> <knows> <Tom> .
+
+# John's birthday
+<JohnDoe> <hasBirthday> "1998-01-01"^^xsd:date.
+
+#JohnDoe Job
+<JohnDoe> <worksAt> <JohnDoeWork>.
+
+<JohnDoeWork> a <WorksAt_>,lirb:N_ary_Relation_Class;
+    <startedAt> "2021-01-01T00:00:00.873-03:00"^^xsd:datetime ;
+    <positionInCompany> "Software Engineering";
+    lirb:value <SoftwareMaker>.
+
+
+
+#Timelines
+ 
+<JohnDoe> tlo:has_timeLine <Timeline/JohnDoe> .
+<Timeline/JohnDoe> rdf:type tl:TimeLine .
+
+#Timelines from sameAs
+<John> tlo:has_timeLine <Timeline/John> .
+<Timeline/John> rdf:type tl:TimeLine .
+
+#INSERTION
+<Instant/JohnDoe/19980101> tl:timeLine <Timeline/JohnDoe> ;
+    rdf:type tl:Instant ;
+    tl:atDate "1998-01-01T09:40:38.813384"^^xsd:dateTime;
+    tlo:has_update <Update/JohnDoe/19980101>.
+<Update/JohnDoe/19980101> rdf:type tlo:Insertion .
+
+
+#Remotion
+<Instant/JohnDoe/20980101> tl:timeLine <Timeline/JohnDoe> ;
+    rdf:type tl:Instant ;
+    tl:atDate "2098-01-01T09:40:38.813384"^^xsd:dateTime;
+    tlo:has_update <Update/JohnDoe/20980101>.
+<Update/JohnDoe/20980101> rdf:type tlo:Remotion .
+
+
+
+#Update Age 20
+<Instant/JohnDoe/20180101> tl:timeLine <Timeline/JohnDoe> ;
+    rdf:type tl:Instant ;
+    tl:atDate "2018-01-01T09:40:38.813384"^^xsd:dateTime ;
+    tlo:has_update <Update/JohnDoe/20180101> .
+<Update/JohnDoe/20180101> rdf:type tlo:Update_Property ;
+    tlo:previous_value "19";
+    tlo:new_value "20";
+    tlo:property <hasAge>.
+
+
+#Insert Relationship
+<Instant/JohnDoe/20180101> tlo:has_update <Update/JohnDoe/20180101_2> .
+<Update/JohnDoe/20180101_2> rdf:type tlo:Insert_Relationship;
+    tlo:uri_object <JackSmith>;
+    tlo:property <knows>.
+
+
+#Insert Relationship from sameAs
+<Instant/John/20180101> tl:timeLine <Timeline/John> ;
+    rdf:type tl:Instant ;
+    tl:atDate "2018-01-01T09:40:38.813384"^^xsd:dateTime ;
+    tlo:has_update <Update/John/20180101_2> .
+    
+<Update/John/20180101_2> rdf:type tlo:Insert_Relationship;
+    tlo:uri_object <SomeOne>;
+    tlo:property <knows>.
+
+
+
+#Update Age 25
+<Instant/JohnDoe/20230101> tl:timeLine <Timeline/JohnDoe> ;
+    rdf:type tl:Instant ;
+    tl:atDate "2023-01-01T09:40:38.813384"^^xsd:dateTime ;
+    tlo:has_update <Update/JohnDoe/20230101> .
+<Update/JohnDoe/20230101> rdf:type tlo:Update_Property ;
+    tlo:previous_value "24";
+    tlo:new_value "25";
+    tlo:property <hasAge>.
+
+
+#Remove Relationship
+<Instant/JohnDoe/20880101> tl:timeLine <Timeline/JohnDoe> ;
+    rdf:type tl:Instant ;
+    tl:atDate "2088-01-01T09:40:38.813384"^^xsd:dateTime ;
+    tlo:has_update <Update/JohnDoe/20880101> .
+<Instant/JohnDoe/20880101> tlo:has_update <Update/JohnDoe/20880101> .
+<Update/JohnDoe/20880101> rdf:type tlo:Remove_Relationship;
+    tlo:uri_object <JackSmith>;
+    tlo:property <knows>.

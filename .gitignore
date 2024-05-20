@@ -1,6 +1,6 @@
 # Indexes files
-#API/index/temp/
-#API/sparql/temp/
+API/index/temp/
+API/sparql/temp/
 # API/experiments
 # Byte-compiled / optimized / DLL files
 __pycache__/

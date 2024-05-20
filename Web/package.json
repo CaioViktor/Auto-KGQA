@@ -24,8 +24,10 @@
     "parcel": "^1.12.4",
     "parcel-plugin-pre-clean": "^1.0.1",
     "react": "^16.8.0 || ^17.0.0",
-    "react-chat-ui": "^0.4.0",
-    "react-dom": "^16.8.0 || ^17.0.0"
+    "react-chat-ui": "./react-chat-ui",
+    "react-dom": "^16.8.0 || ^17.0.0",
+    "showdown": "^2.1.0",
+    "universal-cookie": "^7.1.4"
   },
   "parcelBuildClean": [
     "./dist/*.css",

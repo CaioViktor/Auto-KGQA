@@ -1,6 +1,7 @@
 # Indexes files
-index/temp/
-
+API/index/temp/
+API/sparql/temp/
+# API/experiments
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -26,6 +27,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+!Web/react-chat-ui/lib
+!Web/react-chat-ui/tsconfig.json
 lib64/
 parts/
 sdist/

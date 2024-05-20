@@ -10,10 +10,19 @@ class Index:
         self.path_index = path_index
         self.endpoint = endpoint
         self.normalizer = normalizer
+        self.type = "WHOOSH"
         if not os.path.isdir(path_index):
+            print("Creating new index...")
+            self.loadTerms(endpoint)
             self.index = self.create()
+            print("New index created!")
         else: 
+            print("Loading existing index...")
             self.index = open_dir(self.path_index)
+            print("Existing index Loaded!")
+            
+    def loadTerms(self,endpoint):
+        pass
 
     def create(self):
         schema = Schema(label=TEXT(stored=True), content=TEXT(stored=True))
@@ -49,12 +58,16 @@ class Index:
 
 class TBoxIndex(Index):
     def __init__(self, endpoint, normalizer) -> None:
-        path_index = path_index = "index/temp/t_box_index"
-        self.terms = endpoint.listTerms()
+        path_index = path_index = "index/temp/t_box_index/whoosh"
         super().__init__(path_index, endpoint, normalizer)
+
+    def loadTerms(self,endpoint):
+        self.terms = endpoint.listTerms()
 
 class ABoxIndex(Index):
     def __init__(self, endpoint, normalizer) -> None:
-        path_index = path_index = "index/temp/a_box_index"
-        self.terms = endpoint.listResources()
+        path_index = path_index = "index/temp/a_box_index/whoosh"
         super().__init__(path_index, endpoint, normalizer)
+
+    def loadTerms(self,endpoint):
+        self.terms = endpoint.listResources()

@@ -7,19 +7,23 @@ Auto-KGQA generates **n** SPARQL queries that translate **Q** and selects the be
 ## Framework Architecture
 ![Framework Architecture](images/framework.png)
 ## Get Starting
-1. Create the file ".env" in the directory "[API/](API/)" containing the environment variable OPENAI_API_KEY with your OpenAI token.
+1. Start the triplestore with the desired Knowledge Graph
+2. Create the file ".env" in the directory "[API/](API/)" containing the environment variable OPENAI_API_KEY with your OpenAI token.
    > OPENAI_API_KEY = OPENAI_TOKEN
-2. Configure the file "[API/configs.py](API/configs.py)" with the URIs of the SPARQL endpoints to be queried and the file name for query persistence and feedback.
-3. Inside the directory "[API/](API/)", run the installation of python dependencies with the command:
-   > pip install -r requirements.txt 
-4. Start the API service through the executable shell script on Linux systems or run the server directly through the python script in the directory "[API/](API/)":
+3. Configure the file "[API/configs.py](API/configs.py)" with the URIs of the SPARQL endpoints to be queried and the file name for query persistence and feedback.
+4. Run the installation script in "[API/](API/)" directory:
+   > ./install.sh 
+5. Start the API service through the executable shell script on Linux systems or run the server directly through the python script in the directory "[API/](API/)":
    > ./server.sh
    or
    > python server.py
-5. Inside the directory "[Web](Web/)", run the installation of npm dependencies with the command:
+6. Inside the directory "[Web](Web/)", run the installation of npm dependencies with the command:
    > npm install 
-6. Start the Web interface server in React using the command inside the directory:
+7. Start the Web interface server in React using the command inside the directory:
    > npm start
+
+* The indexes creation process can be executed anytime by running: 
+  > python create_indexes.py
 ## Demo
 The file "[Demo/ontology_example.ttl](Demo/ontology_example.ttl)" can be used with a demo KG to test the framework's functionalities. To use it, upload it to a triplestore and configure your SPARQL endpoint in the file "[API/configs.py](API/configs.py)".
 

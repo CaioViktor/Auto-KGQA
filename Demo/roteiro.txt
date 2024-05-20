@@ -1,0 +1,7 @@
+who is john?
+what is his age?
+How many people do exist?
+what is avarege age for all the people?
+list the name, age, father's name, mother's name for all the people
+Give me the same information, but only for those over the age of 30
+thank you

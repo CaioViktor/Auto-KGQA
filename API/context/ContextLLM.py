@@ -1,3 +1,4 @@
+from configs import SIZE_CONTEXT_WINDOW_TRANSLATE, SIZE_CONTEXT_WINDOW_SELECT, SIZE_CONTEXT_WINDOW_FINAL_ANSWER,VISUALIZATION_TOOL_URL
 class ContextDialog:
     def __init__(self,length=7,language="en"):
         self.system = []
@@ -33,7 +34,7 @@ class ContextTranslator(ContextDialog):
     - Declare non-essential properties to the question as OPTIONAL if needed;
     - DO NOT use specific resources in the query;
     - Declare filters on strings (like labels and names) as filters operations over REGEX function using the case insensitive flag."""
-    def __init__(self,graph,length=7,language="en"):
+    def __init__(self,graph,length=SIZE_CONTEXT_WINDOW_TRANSLATE,language="en"):
         super().__init__(length,language)
         self.changeGraph(graph)
     
@@ -60,7 +61,7 @@ class ContextTranslator(ContextDialog):
 
 
 class ContextChooseBestSPARQL(ContextDialog):
-    def __init__(self,length=7):
+    def __init__(self,length=SIZE_CONTEXT_WINDOW_SELECT):
         super().__init__(length)
         
     def changeGraph(self,graph):
@@ -88,9 +89,15 @@ class ContextChooseBestSPARQL(ContextDialog):
         
         
 class ContextNLGenerator(ContextDialog):
-    def __init__(self,length=7,language="en"):
+    def __init__(self,length=SIZE_CONTEXT_WINDOW_FINAL_ANSWER,language="en"):
         super().__init__(length,language)
         if self.language == "en":
-            self.system.append({"role":"system","content":"Use the SPARQL query and its result set as JSON object to write a answer to the user question. Remember to show the URIs of the objects you use in your response as plain text. DO NOT explain neither cite the SPARQL query and JSON in yours response."})
+            self.system.append({"role":"system","content":f"""Use the SPARQL query and its result set as JSON object to write a answer to the user question.
+                                Here are some points that you should follow in the generated response: 
+                                    - DO NOT explain neither cite the SPARQL query and JSON in yours response;
+                                    - Show the URIs of the objects you use in your response, minus the URIs of datatypes; 
+                                    - Format all the URIs in your response in the markdown notation, e.g. [URI](URI);
+                                    - If the URL is not an image, add the following prefix to URI links: {VISUALIZATION_TOOL_URL}, e.g. [http://example.com]({VISUALIZATION_TOOL_URL}http://example.com)
+                                """})
         elif self.language ==  "pt":
             self.system.append({"role":"system","content":"Use a consulta SPARQL e seu conjunto de resultados como um objeto JSON para responder a questão do usuário"})

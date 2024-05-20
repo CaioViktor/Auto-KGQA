@@ -4,6 +4,35 @@ import React, { useState, useEffect } from "react";
 import { ChatFeed, Message } from "react-chat-ui";
 import axios from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import Cookies from 'universal-cookie';
+var showdown  = require('showdown')
+
+var converter = new showdown.Converter();
+function parseMD(md){
+  // console.log(responseData);
+  // let pattern = /http\S+/ig;
+  // if(pattern.test(answer)){
+    //   let matchs = answer.match(pattern);
+    //   console.log(matchs);
+    //   matchs.sort((a, b) => b.length - a.length);
+    //   for(const current of matchs){
+      //     let link = current.trim().replaceAll('"',"").replaceAll("'","").replaceAll('<',"").replaceAll('>',"").replaceAll(')',"").trim();
+      //     let link_visualization = "http://localhost:7200/graphs-visualizations?uri=" + encodeURIComponent(link);
+      //     let new_link = '<a target="_blank" href="' + link_visualization + '">'+link+"</a>";
+      //     answer = answer.replaceAll(link,new_link);
+      //   }
+      // }
+      
+      let htmlT = converter.makeHtml(md);
+      htmlT = htmlT.replaceAll("<a ",'<a target="_blank" ');
+      return htmlT;
+    }
+    
+// const text = "John, also known as John Doe ([http://www.example.lirb.com/JohnDoe](http://www.example.lirb.com/JohnDoe)) or simply Jonny, is a 25-year-old software engineer. He was born on January 1, 1998, and he is a living being and a person. He is considered a resource and a thing in web ontology records. He's known by other individuals such as Jane ([http://www.example.lirb.com/Jane](http://www.example.lirb.com/Jane)), Tom ([http://www.example.lirb.com/Tom](http://www.example.lirb.com/Tom)), Jack Smith ([http://www.example.lirb.com/JackSmith](http://www.example.lirb.com/JackSmith)), and someone referred to as 'Someone' ([http://www.example.lirb.com/SomeOne](http://www.example.lirb.com/SomeOne)). He works at ‘JohnDoeWork’([http://www.example.lirb.com/JohnDoeWork](http://www.example.lirb.com/JohnDoeWork)). More information is available in the timeline object ([http://www.example.lirb.com/Timeline/JohnDoe](http://www.example.lirb.com/Timeline/JohnDoe), [http://www.example.lirb.com/Timeline/John](http://www.example.lirb.com/Timeline/John)). Here is his thumbnail profile: [https://cdn-icons-png.flaticon.com/512/10/10522.png](https://cdn-icons-png.flaticon.com/512/10/10522.png).";
+// console.log(parseMD(text));
+
+
+const cookies = new Cookies();
 
 const muiStyles = {
   form: {
@@ -45,6 +74,8 @@ const muiStyles = {
 class Chat extends React.Component {
   constructor(props) {
     super(props);
+    this.user_id = this.props.user_id;
+    // console.log("user_id configurado na classe:"+this.user_id);
     this.classes = this.props.classes;
     this.state = {
       isTyping: false,
@@ -66,30 +97,22 @@ class Chat extends React.Component {
 
   onMessageSubmit(e) {
     const input = this.message;
+    this.state.isTyping = true;
+    this.setState(this.state);
     e.preventDefault();
     if (!input.value) {
       return false;
     }
     this.pushMessage(0, input.value);
     const query = input.value;
-    axios.get('http://0.0.0.0:5000/query/1?query='+query, function (req, res) {
+    // console.log("vai consultas com user_id:"+this.user_id);
+    axios.get('http://0.0.0.0:5000/query/'+this.user_id+'?query='+query, function (req, res) {
       res.header("Access-Control-Allow-Origin", "*");
     })
     .then(response => {
       const responseData = response.data;
       let answer = responseData.answer;
-      // console.log(responseData);
-      let pattern = /http\S+/ig;
-      if(pattern.test(answer)){
-        let matchs = answer.match(pattern);
-        console.log(matchs);
-        for(const current of matchs){
-          let link = current.trim().replaceAll('"',"").replaceAll("'","").replaceAll('<',"").replaceAll('>',"").replaceAll(')',"").trim();
-          let link_visualization = "http://localhost:7200/graphs-visualizations?uri=" + encodeURIComponent(link);
-          let new_link = '<a target="_blank" href="' + link_visualization + '">'+link+"</a>";
-          answer = answer.replaceAll(link,new_link);
-        }
-      }
+      answer = parseMD(answer);
       this.pushMessage(1, answer);
       if(responseData.sparql != null && responseData.sparql != "null" && responseData.sparql != ""){
         var query_link = encodeURIComponent(responseData.sparql);
@@ -99,19 +122,27 @@ class Chat extends React.Component {
         content_more_info+='</span>'
       this.pushMessage(1, content_more_info);
       }
+      this.state.isTyping = false;
+      this.setState(this.state);
     })
     .catch(error => {
       console.error('Error sending request:', error);
+      this.state.isTyping = false;
+      this.setState(this.state);
+      this.pushMessage(1, "I'm sorry! something went wrong while trying to answer your question.");
     });
     input.value = "";
   }
 
   pushMessage(recipient = 0, message) {
+    let sender = "Auto-KGQA";
+    if(recipient == 0)
+      sender = "User";
     const prevState = this.state;
     const newMessage = new Message({
       id: recipient,
       message,
-      senderName: "Auto-KGQA"
+      senderName: sender
     });
 
     prevState.messages.push(newMessage);
@@ -161,6 +192,14 @@ class Chat extends React.Component {
     );
   }
 }
-
+let user_id = null;
+if(cookies.get('user_id') == null){
+  user_id = (Math.random()*1000)|0;
+  cookies.set('user_id', user_id, { path: '/' });
+  // console.log("criou novo user_id:"+user_id);
+}else{
+  user_id = cookies.get('user_id');
+  // console.log("Carregou user_id:"+user_id);
+}
 const StyleChat = withStyles(muiStyles)(Chat);
-render(<StyleChat />, document.getElementById("root"));
+render(<StyleChat user_id={user_id}/>, document.getElementById("root"));

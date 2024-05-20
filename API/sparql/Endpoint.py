@@ -3,60 +3,107 @@ from rdflib.util import guess_format
 from rdflib.plugins.sparql.results.jsonresults import JSONResultSerializer
 from SPARQLWrapper import SPARQLWrapper, JSON
 from re import finditer,findall
+import os
+import pickle 
 import io
 from io import StringIO, BytesIO
-
-def convertToTurtle(triples):
-    str_in = StringIO(triples)
-    g = Graph()
-    g.parse(str_in, format='n3')
-    return g.serialize(format="turtle")
+from sparql.Utils import getGraph
+from configs import NUMBER_HOPS,LIMIT_BY_PROPERTY
 
 class Endpoint:
-    def __init__(self,url_endpoint):
+    def __init__(self,url_endpoint=None):
         self.url_endpoint = url_endpoint
+        self.path_labels = "sparql/temp/labels.obj"
+        self.path_counts = "sparql/temp/counts.obj"
         self.visited_nodes = set()
+        self.graph = None
+        self.labels = {}
+        if url_endpoint != None and os.path.exists(self.path_labels):
+            print("Loading labels on endpoint cache...")
+            self.load_labels()
+            print("Labels on endpoint cache loaded!")
+
+        self.counts = {}
+        if url_endpoint != None and os.path.exists(self.path_counts):
+            print("Loading counts on endpoint cache...")
+            self.load_counts()
+            print("Counts on endpoint cache loaded!")
+
+        
+
+    def save_labels(self):
+        with open(self.path_labels,"wb") as file:
+            pickle.dump(self.labels, file)
+
+    def load_labels(self):
+        with open(self.path_labels,"rb") as file:
+            self.labels = pickle.load(file)
+
+    def save_counts(self):
+        with open(self.path_counts,"wb") as file:
+            pickle.dump(self.counts, file)
+
+    def load_counts(self):
+        with open(self.path_counts,"rb") as file:
+            self.counts = pickle.load(file)
+
+    @staticmethod
+    def from_rdflib_in_memory(graph):
+        endpoint = Endpoint()
+        endpoint.graph = graph
+        return endpoint
+    
+    @staticmethod
+    def from_rdflib_in_string(triples):
+        graph = getGraph(triples)
+        return Endpoint.from_rdflib_in_memory(graph)
 
     def __str__(self):
         g = Graph()
         return str(g.parse(self.url_endpoint,format=guess_format(self.url_endpoint)).serialize())
         
-    def executeQuery(self,query):
-        g = Graph()
-        graph = g.parse(self.url_endpoint,format=guess_format(self.url_endpoint)).serialize()
-        qres = graph.query(query)
+    def run_sparql_rdflib(self,query):
+        if self.graph == None and self.url_endpoint != None:
+            g = Graph()
+            self.graph = g.parse(self.url_endpoint,format=guess_format(self.url_endpoint)).serialize()
+        qres = self.graph.query(query)
         return qres
 
     def run_sparql(self,query):
         # print(query)
-        result_set = []
-        if 'http' in self.url_endpoint:
-            #Enpoint is a valid remote SPARQL endpoint
-            sparql = SPARQLWrapper(self.url_endpoint)
-            sparql.setQuery(query)
-            sparql.setReturnFormat(JSON)
-            results = sparql.query().convert()
-            for result in results["results"]["bindings"]:
-                result_item = {}
-                for var in result:
-                    if 'datatype' in result[var]:
-                        result_item["?"+var] = f'\"{str(result[var]["value"])}\"^^<{str(result[var]["datatype"])}>'
-                    else:
-                        result_item["?"+var] = str(result[var]["value"])
-                result_set.append(result_item)
-        else:
-            #Enpoint is a local file
-            results= self.executeQuery(query)
-            encoder = JSONResultSerializer(results)
-            output = io.StringIO()
-            encoder.serialize(output)
-            print(file=output)
-            for result in results:
-                result_item = {}
-                for var in results.vars:
-                    result_item["?"+var] = str(result[var])
-                result_set.append(result_item)
-        return result_set
+        try:
+            result_set = []
+            if self.url_endpoint != None and'http' in self.url_endpoint:
+                #Enpoint is a valid remote SPARQL endpoint
+                sparql = SPARQLWrapper(self.url_endpoint)
+                sparql.setQuery(query)
+                sparql.setReturnFormat(JSON)
+                results = sparql.query().convert()
+                for result in results["results"]["bindings"]:
+                    result_item = {}
+                    for var in result:
+                        if 'datatype' in result[var]:
+                            result_item["?"+var] = f'\"{str(result[var]["value"])}\"^^<{str(result[var]["datatype"])}>'
+                        else:
+                            result_item["?"+var] = str(result[var]["value"])
+                    result_set.append(result_item)
+            else:
+                #Enpoint is a local file
+                results= self.run_sparql_rdflib(query)
+                encoder = JSONResultSerializer(results)
+                output = io.StringIO()
+                encoder.serialize(output)
+                print(file=output)
+                for result in results:
+                    result_item = {}
+                    for var in results.vars:
+                        result_item["?"+var] = str(result[var])
+                    result_set.append(result_item)
+            return result_set
+        except Exception as e:
+            print(e)
+            print(query)
+            return None
     
     def getOneResource(self,uri):
         query = f"""SELECT * WHERE{{
@@ -75,7 +122,8 @@ class Endpoint:
         triples = self.describe_(resourceUri,0,2)[0]
         return triples
         
-    def describe(self,uri,number_hops=2,limit_by_property=-1):
+    def describe(self,uri,number_hops=NUMBER_HOPS,limit_by_property=LIMIT_BY_PROPERTY):
+        # print("Describe: "+str(uri))
         triples,is_class = self.describe_(uri,number_hops,limit_by_property)
         if is_class:
             triples += self.getOneResource(uri)
@@ -91,13 +139,28 @@ class Endpoint:
     def filterSelfEquivalenceAxioms(self,s ,p ,o):        
         if str(p) == "http://www.w3.org/2000/01/rdf-schema#subClassOf" and (str(s) == str(o)):
             return False
+        if str(p) == "http://www.w3.org/2000/01/rdf-schema#subPropertyOf" and (str(s) == str(o)):
+            return False
         if str(p) == "http://www.w3.org/2002/07/owl#equivalentClass" and (str(s) == str(o)):
+            return False
+        if str(p) == "http://www.w3.org/2002/07/owl#equivalentProperty" and (str(s) == str(o)):
             return False
         if str(p) == "http://www.w3.org/2002/07/owl#sameAs" and (str(s) == str(o)):
             return False
+        if str(p) == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" and str(s) == "http://www.w3.org/2000/01/rdf-schema#Class":
+            return False
+        if str(p) == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" and str(s) == "http://www.w3.org/2002/07/owl#Class":
+            return False
         return True
     
-    def describe_(self,uri,number_hops=2,limit_by_property=-1):
+    def filterProperty(self,p):
+        if str(p) == "http://www.w3.org/2000/01/rdf-schema#isDefinedBy":
+            return False
+        if str(p) == "http://www.w3.org/2000/01/rdf-schema#seeAlso":
+            return False
+        return True
+    
+    def describe_(self,uri,number_hops = NUMBER_HOPS,limit_by_property = LIMIT_BY_PROPERTY):
         # print(f"visitando {uri}")
         is_class = False
         self.visited_nodes.add(uri)
@@ -114,25 +177,27 @@ class Endpoint:
         #outgoing properties
         for triple in triples:
             # print(triple)
-            if 'http' in triple["?o"] and not "^^" in triple["?o"]:
-                if self.filterSelfEquivalenceAxioms(uri,triple["?p"],triple["?o"]):
-                    describe += f"""<{uri}> <{triple["?p"]}> <{triple["?o"]}>.\n"""
-                if triple["?p"] == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" and (triple["?o"] == "http://www.w3.org/2000/01/rdf-schema#Class" or triple["?o"] == "http://www.w3.org/2002/07/owl#Class"):
-                    is_class = True
-                if limit_by_property > -1:
-                    if not triple["?p"] in count_by_property:
-                        count_by_property[triple["?p"]] = 0
-                    if count_by_property[triple["?p"]] < limit_by_property:
-                        count_by_property[triple["?p"]]+=1
-                        if self.filterAxiomsTriples(triple["?o"]):
-                            next_nodes.add(triple["?o"])
-                elif self.filterAxiomsTriples(triple["?o"]):
-                    next_nodes.add(triple["?o"])
-            else:
-                if "^^" in triple["?o"]:
-                    describe += f"""<{uri}> <{triple["?p"]}> {triple["?o"]}.\n"""
-                else:
-                    describe += f"""<{uri}> <{triple["?p"]}> "{triple["?o"]}".\n"""
+            if self.filterProperty(triple["?p"]):
+                if 'http' in triple["?o"] and not "^^" in triple["?o"]:#Object Property
+                    # print(triple)
+                    if self.filterSelfEquivalenceAxioms(uri,triple["?p"],triple["?o"]):
+                        describe += f"""<{uri}> <{triple["?p"]}> <{triple["?o"]}>.\n"""
+                    if triple["?p"] == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" and (triple["?o"] == "http://www.w3.org/2000/01/rdf-schema#Class" or triple["?o"] == "http://www.w3.org/2002/07/owl#Class"):
+                        is_class = True
+                    if limit_by_property > -1:# Limiting number of triples for property
+                        if not triple["?p"] in count_by_property:
+                            count_by_property[triple["?p"]] = 0
+                        if count_by_property[triple["?p"]] < limit_by_property:
+                            count_by_property[triple["?p"]]+=1
+                            if self.filterAxiomsTriples(triple["?o"]):
+                                next_nodes.add(triple["?o"])
+                    elif self.filterAxiomsTriples(triple["?o"]):
+                        next_nodes.add(triple["?o"])
+                else:#Datatype Property
+                    if "^^" in triple["?o"]: #has datatype
+                        describe += f"""<{uri}> <{triple["?p"]}> {triple["?o"]}.\n"""
+                    else:
+                        describe += f"""<{uri}> <{triple["?p"]}> "{triple["?o"]}".\n"""
         #ingoing properties
         query = f"""SELECT DISTINCT ?s ?p WHERE{{
             ?s ?p <{uri}>.
@@ -171,43 +236,88 @@ class Endpoint:
             number = int(matchs[0].replace("\"","").replace("\'",""))
         return number
 
-    def listTerms(self,language="en",limit=10000):
+    def listTerms(self,language=None,limit=10000):
         query =f"""
         PREFIX owl: <http://www.w3.org/2002/07/owl#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        SELECT DISTINCT ?term ?type ?label WHERE{{
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        PREFIX dc: <http://purl.org/dc/elements/1.1/>
+        PREFIX dcterms: <http://purl.org/dc/terms/>
+        PREFIX dbo: <http://dbpedia.org/ontology/>
+        PREFIX dbp: <http://dbpedia.org/property/>
+        SELECT DISTINCT ?term ?type ?label ?property ?qtd WHERE {{
             {{
                 ?term a owl:Class.
                 BIND("class" as ?type)
+                {{
+                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
+                        [] rdf:type ?term.
+                    }} GROUP BY ?term
+                }}
             }}UNION{{
                 ?term a rdfs:Class.
                 BIND("class" as ?type)
+                {{
+                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
+                        [] rdf:type ?term.
+                    }} GROUP BY ?term
+                }}
             }}UNION{{
                 ?term a rdf:Property.
                 BIND("property" as ?type)
+                {{
+                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
+                        [] ?term [].
+                    }} GROUP BY ?term
+                }}
             }}UNION{{
                 ?term a owl:DatatypeProperty.
                 BIND("property" as ?type)
+                {{
+                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
+                        [] ?term [].
+                    }} GROUP BY ?term
+                }}
             }}
             UNION{{
                 ?term a owl:ObjectProperty.
                 BIND("property" as ?type)
+                {{
+                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
+                        [] ?term [].
+                    }} GROUP BY ?term
+                }}
             }}
-            
+        FILTER(!REGEX(STR(?term),"http://www.w3.org/2002/07/owl#","i"))
+        FILTER(!REGEX(STR(?term),"http://www.w3.org/2000/01/rdf-schema#","i"))
+        FILTER(!REGEX(STR(?term),"http://www.w3.org/1999/02/22-rdf-syntax-ns#","i"))
+        FILTER(!REGEX(STR(?term),"http://www.w3.org/2001/XMLSchema#","i"))  
+        FILTER(!REGEX(STR(?term),"http://www.ontotext.com/","i"))  
         OPTIONAL{{
-                ?term rdfs:label ?label1.
+                ?term ?property ?label1.
+                FILTER(
+                    ?property = rdfs:label ||
+                    ?property = foaf:name ||
+                    ?property = skos:prefLabel ||
+                    ?property = dc:title ||
+                    ?property = dcterms:title ||
+                    ?property = dbo:name ||
+                    ?property = dbp:name ||
+                    ?property = dbo:name ||
+                    ?property = dbp:name 
+                )
                 {'FILTER(LANG(?label1) = "'+language+'")' if language != None else ''}
                 
             }}
-            
             BIND(COALESCE(?label1,?term) as ?label)
         }}
         """
-        count_query = query.replace("DISTINCT ?term ?type ?label","(COUNT(DISTINCT *) as ?qtd)")
         # print(query)
-        # print(count_query)
-        qtd = self.unpackNumber(self.run_sparql(count_query)[0]["?qtd"])
+        count_query = query.replace("DISTINCT ?term ?type ?label ?property ?qtd","(COUNT(DISTINCT *) as ?qtd_max)")
+        qtd = self.unpackNumber(self.run_sparql(count_query)[0]["?qtd_max"])
+        print("Terms quantity: "+str(qtd))
         query_limit_template = query+f"LIMIT {limit} OFFSET $offset"
         results = []
         offset = 0
@@ -217,8 +327,18 @@ class Endpoint:
             results+= self.run_sparql(query_limit)
         # print(results)
         for result in results:
-            if 'http' in result['?label'] and not '^^' in result['?label']:
-                result['?label'] = self.camel_case_split(result['?label'].split("/")[-1].split("#")[-1])
+            uri = result['?term']
+            if not uri in self.labels:
+                self.labels[uri] = []
+            if "?property" in result:
+                type_label = result["?property"]
+            else:
+                result['?label'] = self.uri_to_label(result['?label'])
+                type_label = "URI"
+                # print("Criou label para "+str(uri))
+            self.labels[uri].append([result['?label'],type_label])
+            if not uri in self.counts:
+                self.counts[uri]= self.unpackNumber(result['?qtd'])
         return results
 
     def listResources(self,language=None,limit=10000):
@@ -226,8 +346,21 @@ class Endpoint:
         PREFIX owl: <http://www.w3.org/2002/07/owl#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        SELECT DISTINCT ?term ?type ?label WHERE{{
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        PREFIX dc: <http://purl.org/dc/elements/1.1/>
+        PREFIX dcterms: <http://purl.org/dc/terms/>
+        PREFIX dbo: <http://dbpedia.org/ontology/>
+        PREFIX dbp: <http://dbpedia.org/property/>
+        SELECT DISTINCT ?term ?type ?label ?property ?qtd WHERE {{
             ?term ?p ?o.
+
+            FILTER(!REGEX(STR(?term),"http://www.w3.org/2002/07/owl#","i"))
+            FILTER(!REGEX(STR(?term),"http://www.w3.org/2000/01/rdf-schema#","i"))
+            FILTER(!REGEX(STR(?term),"http://www.w3.org/1999/02/22-rdf-syntax-ns#","i"))
+            FILTER(!REGEX(STR(?term),"http://www.w3.org/2001/XMLSchema#","i"))  
+            FILTER(!REGEX(STR(?term),"http://www.ontotext.com/","i"))  
+
             FILTER NOT EXISTS {{
                 {{
                     ?term a owl:Class.
@@ -242,18 +375,38 @@ class Endpoint:
                     ?term a owl:ObjectProperty.
                 }}
             }}
+
             OPTIONAL{{
-                ?term rdfs:label ?label1.
+                ?term ?property ?label1.
+                FILTER(
+                    ?property = rdfs:label ||
+                    ?property = foaf:name ||
+                    ?property = skos:prefLabel ||
+                    ?property = dc:title ||
+                    ?property = dcterms:title ||
+                    ?property = dbo:name ||
+                    ?property = dbp:name ||
+                    ?property = dbo:name ||
+                    ?property = dbp:name 
+                )
                 {'FILTER(LANG(?label1) = "'+language+'")' if language != None else ''}
                 
             }}
             BIND("resource" as ?type)
             BIND(COALESCE(?label1,?term) as ?label)
+            {{
+                SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
+                    {{?a ?b ?term.}}
+                    UNION
+                    {{?term ?c ?d.}}
+                }} GROUP BY ?term
+            }}
         }}
         """
-        count_query = query.replace("DISTINCT ?term ?type ?label","(COUNT(DISTINCT *) as ?qtd)")
         # print(query)
-        qtd = self.unpackNumber(self.run_sparql(count_query)[0]["?qtd"])
+        count_query = query.replace("DISTINCT ?term ?type ?label ?property ?qtd","(COUNT(DISTINCT *) as ?qtd_max)")
+        qtd = self.unpackNumber(self.run_sparql(count_query)[0]["?qtd_max"])
+        print("Terms quantity: "+str(qtd))
         query_limit_template = query+f"LIMIT {limit} OFFSET $offset"
         results = []
         offset = 0
@@ -262,11 +415,24 @@ class Endpoint:
             offset+= limit
             results+= self.run_sparql(query_limit)
         for result in results:
-            if 'http' in result['?label'] and not '^^' in result['?label']:
-                result['?label'] = self.camel_case_split(result['?label'].split("/")[-1].split("#")[-1])
+            uri = result['?term']
+            if not uri in self.labels:
+                self.labels[uri] = []
+            if "?property" in result:
+                type_label = result["?property"]
+            else:
+                result['?label'] = self.uri_to_label(result['?label'])
+                type_label = "URI"
+                # print("Criou label para "+str(uri))
+            self.labels[uri].append([result['?label'],type_label])
+            if not uri in self.counts:
+                self.counts[uri]= self.unpackNumber(result['?qtd'])
         return results
     
     def countRankResource(self,url):
+        url = url.replace("<","").replace(">","")
+        if url in self.counts:
+            return self.counts[url]
         query = f"""
             SELECT (COUNT( DISTINCT *) as ?count) WHERE{{
                 {{
@@ -278,13 +444,165 @@ class Endpoint:
                 }}
             }}
         """
-        return int(self.run_sparql(query)[0]["?count"].replace('"^^<http://www.w3.org/2001/XMLSchema#integer>','').replace('"',""))
+        qtd = int(self.run_sparql(query)[0]["?count"].replace('"^^<http://www.w3.org/2001/XMLSchema#integer>','').replace('"',""))
+        self.counts[url] = qtd
+        return qtd
     
     def struct_result_query(self,sparql):
-        query_results = self.run_sparql(sparql)
-        question_forumlated = f'''
-            {{"query":"```sparql {sparql}```",
-            "result": {query_results} }}
-            '''
-        return question_forumlated,query_results
+        try:
+            query_results = self.run_sparql(sparql)
+            question_formulated = f'''
+                {{"query":"```sparql\n{sparql}\n```",
+                "result": {query_results} }}
+                '''
+            return question_formulated,query_results
+        except Exception as e:
+            raise e
     
+    def get_labels(self,uri):
+        uri = uri.replace("<","").replace(">","")
+        if uri in self.labels:
+            return self.labels[uri]
+        labels_ =  self.get_labels_(uri)
+        self.labels[uri]= labels_
+        return labels_
+    
+    def uri_to_label(self, uri):
+        # print(uri)
+        slices = uri.split("/")
+        raw_label = slices[-1]
+        if "#" in raw_label:
+            raw_label = raw_label.replace("#"," ")
+        elif not "." in slices[-2]:
+            raw_label = slices[-2]+" "+raw_label
+
+        label_from_uri = self.camel_case_split(raw_label).replace("_"," ").strip()
+        return label_from_uri
+    
+    def get_labels_(self,uri):
+        query = f"""
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        PREFIX dc: <http://purl.org/dc/elements/1.1/>
+        PREFIX dcterms: <http://purl.org/dc/terms/>
+        PREFIX dbo: <http://dbpedia.org/ontology/>
+        PREFIX dbp: <http://dbpedia.org/property/>
+        SELECT DISTINCT ?label ?property WHERE{{
+            <{uri}> ?property ?label.
+            FILTER(
+                ?property = rdfs:label ||
+                ?property = foaf:name ||
+                ?property = skos:prefLabel ||
+                ?property = dc:title ||
+                ?property = dcterms:title ||
+                ?property = dbo:name ||
+                ?property = dbp:name ||
+                ?property = dbo:name ||
+                ?property = dbp:name 
+            )
+        }}"""
+        results = self.run_sparql(query)
+        labels = []
+        for result in results:
+            labels.append([result["?label"],result["?property"]])
+        label_from_uri = self.uri_to_label(uri)
+        if not label_from_uri in labels:
+            labels.append([label_from_uri,"URI"])
+        return labels
+    
+    def get_resource_class(self,uri):
+        query = f"""
+        SELECT DISTINCT ?class WHERE{{
+            <{uri}> a ?class   
+        }}
+        """
+        results = self.run_sparql(query)
+        classes = []
+        for result in results:
+            classes.append(result["?class"])
+        return classes
+    
+    def get_resource_comments(self,uri):
+        query = f"""
+        SELECT DISTINCT ?comment WHERE{{
+            <{uri}> <http://www.w3.org/2000/01/rdf-schema#comment> ?comment   
+        }}
+        """
+        results = self.run_sparql(query)
+        comments = []
+        for result in results:
+            comments.append(result["?comment"])
+        return comments
+    
+    def get_property_domain(self,uri):
+        query = f"""
+        SELECT DISTINCT ?domain WHERE{{
+            <{uri}> <http://www.w3.org/2000/01/rdf-schema#domain> ?domain   
+        }}
+        """
+        results = self.run_sparql(query)
+        domain = []
+        for result in results:
+            domain.append(result["?domain"])
+        return domain
+    
+    def get_property_range(self,uri):
+        query = f"""
+        SELECT DISTINCT ?range WHERE{{
+            <{uri}> <http://www.w3.org/2000/01/rdf-schema#range> ?range   
+        }}
+        """
+        results = self.run_sparql(query)
+        range = []
+        for result in results:
+            range.append(result["?range"])
+        return range
+    
+    def get_metadata(self,uri):
+        if "http://www.w3.org/2002/07/owl#" in uri or "http://www.w3.org/2000/01/rdf-schema#" in uri or "http://www.w3.org/1999/02/22-rdf-syntax-ns#" in uri or "http://www.w3.org/2001/XMLSchema#" in uri or "http://www.ontotext.com/" in uri or ".png" in uri or ".jpg" in uri:
+            return ""
+        triples = ""
+        labels = self.get_labels(uri)
+        
+        for label in labels:
+            if label[1] != 'URI':
+                triples+= f"<{uri}> <{label[1]}> \"{label[0]}\".\n"
+
+        classes = self.get_resource_class(uri)
+        for classe in classes:
+            triples+= f"<{uri}> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <{classe}>.\n"
+            if classe != "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property" and classe != "http://www.w3.org/2002/07/owl#DatatypeProperty" and classe != "http://www.w3.org/2002/07/owl#ObjectProperty":
+                triples+= f"<{classe}> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class>.\n"
+            labels = self.get_labels(str(classe))
+            for label in labels:
+                if label[1] != 'URI':
+                    triples+= f"<{str(classe)}> <{label[1]}> \"{label[0]}\".\n"
+            comments_str = ""
+            comments = self.get_resource_comments(str(classe))
+            for comment in comments:
+                comments_str+=comment+" "
+            if comments_str != "":
+                triples+= f"<{str(classe)}> <http://www.w3.org/2000/01/rdf-schema#comment> \"{comments_str}\".\n"
+        return triples
+    
+    def get_metada_property(self,uri):
+        if "http://www.w3.org/2002/07/owl#" in uri or "http://www.w3.org/2000/01/rdf-schema#" in uri or "http://www.w3.org/1999/02/22-rdf-syntax-ns#" in uri or "http://www.w3.org/2001/XMLSchema#" in uri or "http://www.ontotext.com/" in uri or ".png" in uri or ".jpg" in uri:
+            return ""
+        triples = self.get_metadata(uri)
+
+        classes = self.get_resource_class(uri)
+        for classe in classes:
+            triples+= f"<{uri}> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <{classe}>.\n"
+        if '<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>' not in triples:
+            triples+= f"<{uri}> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property>.\n"
+        
+        # print(triples)
+        domains = self.get_property_domain(uri)
+        for domain in domains:
+            triples+= f"<{uri}> <http://www.w3.org/2000/01/rdf-schema#domain> <{domain}>.\n"
+        ranges = self.get_property_range(uri)
+        for range in ranges:
+            triples+= f"<{uri}> <http://www.w3.org/2000/01/rdf-schema#range> <{range}>.\n"
+
+        return triples

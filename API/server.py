@@ -1,19 +1,19 @@
 from sparql.Endpoint import Endpoint
 from nlp.normalizer import *
-from index.whoosh_index import *
+# from index.whoosh_index import *
 from configs import *
 from persistence.Questions_Dataset import Questions_Dataset
 from flask import Flask,render_template,request, redirect, url_for, jsonify
 from flask_cors import CORS, cross_origin
 import os.path
 from dotenv import load_dotenv
-import openai
+#Import T-Box index
+from index.import_index import *
 
 from core.ChatHandler import ChatHandler
 
 #OpenAI
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 #Normalizer
 normalizer = Normalizer()
@@ -32,9 +32,10 @@ a_box_index = ABoxIndex(endpoint_a_box,normalizer)
 chatHandler = ChatHandler(endpoint_a_box,t_box_index,normalizer,a_box_index)
 
 #Question Dataset
-dataset = Questions_Dataset(DATASET_FILE)
 if os.path.isfile(DATASET_FILE):
     dataset = Questions_Dataset.load(DATASET_FILE)
+else:
+     dataset = Questions_Dataset(path=DATASET_FILE)
 
 #Flask
 app = Flask(__name__)
@@ -51,11 +52,11 @@ def index():
 def query(id,methods=['GET']):
     query = request.args.get('query',default="")
     # print("question: "+query)
-    qa = chatHandler.getChat(id)
-    result = qa.processQuestion(query)
+    result = chatHandler.process_question(id,query)
     # print(result)
-    result = dataset.add(result)
-    dataset.save()
+    if 'sparql' in result and result['sparql'] != None:
+        result = dataset.add(result,id)
+        dataset.save()
     return jsonify(result)
 
 @app.route("/feedback")

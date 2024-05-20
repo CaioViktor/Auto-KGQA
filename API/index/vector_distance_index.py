@@ -1,6 +1,8 @@
 import os
-from langchain.embeddings import SentenceTransformerEmbeddings
-from langchain.vectorstores import FAISS
+# from langchain.embeddings import SentenceTransformerEmbeddings
+from langchain_community.embeddings import SentenceTransformerEmbeddings
+# from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores.faiss import DistanceStrategy
 
 
@@ -19,7 +21,7 @@ class Index:
             print("New index created!")
         else: 
             print("Loading existing index...")
-            self.index = FAISS.load_local(self.path_index, self.embedding_function)
+            self.index = FAISS.load_local(self.path_index, self.embedding_function,allow_dangerous_deserialization=True)
             print("Existing index Loaded!")
     
     def loadTerms(self,endpoint):

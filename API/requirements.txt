@@ -13,3 +13,5 @@ spacy_dbpedia_spotlight==0.2.6
 SPARQLWrapper==2.0.0
 tiktoken==0.6.0
 Whoosh==2.7.4
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4

@@ -2,13 +2,17 @@ from sparql.Utils import convertToTurtle, list_to_string_triples
 from sparql.Filter_Triples import Filter_Triples
 from nlp.parsers import *
 from openai import OpenAI
+from dotenv import load_dotenv
 import warnings
-
-client = OpenAI()
 import re
 from context.ContextLLM import *
-from langchain.embeddings import SentenceTransformerEmbeddings
+# from langchain.embeddings import SentenceTransformerEmbeddings
+from langchain_community.embeddings import SentenceTransformerEmbeddings
 from configs import NUMBER_HOPS,LIMIT_BY_PROPERTY,FILTER_GRAPH,RELEVANCE_THRESHOLD,MAX_HITS_RATE,PRINT_HITS,TEMPERATURE_TRANSLATE,TEMPERATURE_SELECT,TEMPERATURE_FINAL_ANSWER
+
+#OpenAI
+load_dotenv()
+client = OpenAI()
 
 class QuestionHandler:
     def __init__(self,endpoint,t_box_index,normalizer,messagesTranslater=ContextTranslator(""),messagesNL=ContextNLGenerator(),generalConversation=ContextDialog(),messagesChooseBest = ContextChooseBestSPARQL(""),a_box_index=None,model_name="gpt-3.5-turbo-16k") -> None:

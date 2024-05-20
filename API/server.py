@@ -6,14 +6,13 @@ from persistence.Questions_Dataset import Questions_Dataset
 from flask import Flask,render_template,request, redirect, url_for, jsonify
 from flask_cors import CORS, cross_origin
 import os.path
-from dotenv import load_dotenv
+
 #Import T-Box index
 from index.import_index import *
 
 from core.ChatHandler import ChatHandler
 
-#OpenAI
-load_dotenv()
+
 
 #Normalizer
 normalizer = Normalizer()

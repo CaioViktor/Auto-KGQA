@@ -9,6 +9,7 @@ import io
 from io import StringIO, BytesIO
 from sparql.Utils import getGraph
 from configs import NUMBER_HOPS,LIMIT_BY_PROPERTY
+import xmltodict
 
 class Endpoint:
     def __init__(self,url_endpoint=None):
@@ -65,9 +66,23 @@ class Endpoint:
     def run_sparql_rdflib(self,query):
         if self.graph == None and self.url_endpoint != None:
             g = Graph()
-            self.graph = g.parse(self.url_endpoint,format=guess_format(self.url_endpoint)).serialize()
+            self.graph = g.parse(self.url_endpoint,format=guess_format(self.url_endpoint))
         qres = self.graph.query(query)
         return qres
+
+
+    def parse_value_redflib_result(self,var):
+        if 'literal' in var:
+            if type(var["literal"]) is dict:
+                if "@datatype" in var["literal"]:
+                    value = f'\"{str(var["literal"]["#text"])}\"^^<{str(var["literal"]["@datatype"])}>'
+                else:
+                    value = f'\"{str(var["literal"]["#text"])}\"'
+            else:
+                value = f'\"{str(var["literal"])}\"^^<http://www.w3.org/2001/XMLSchema#float>'
+        else:
+            value = str(var["uri"])
+        return value
 
     def run_sparql(self,query):
         # print(query)
@@ -90,18 +105,25 @@ class Endpoint:
             else:
                 #Enpoint is a local file
                 results= self.run_sparql_rdflib(query)
-                encoder = JSONResultSerializer(results)
-                output = io.StringIO()
-                encoder.serialize(output)
-                print(file=output)
-                for result in results:
-                    result_item = {}
-                    for var in results.vars:
-                        result_item["?"+var] = str(result[var])
-                    result_set.append(result_item)
+                results = xmltodict.parse(results.serialize())
+                # print(results)
+                if type(results["sparql"]["results"]["result"]) is dict:
+                        result_item = {}
+                        var = results["sparql"]["results"]["result"]["binding"]
+                        result_item["?"+var["@name"]] = self.parse_value_redflib_result(var)
+                        result_set.append(result_item)
+                else:
+                    for result in results["sparql"]["results"]["result"]:
+                        result_item = {}
+                        
+                        for var in result["binding"]:
+                            # print(var)
+                            result_item["?"+var["@name"]] = self.parse_value_redflib_result(var)
+                        # print(result_item["?"+var["@name"]])
+                        result_set.append(result_item)
             return result_set
         except Exception as e:
-            print(e)
+            print("Exception on run_sparql: "+str(e))
             print(query)
             return None
     
@@ -325,7 +347,7 @@ class Endpoint:
             query_limit = query_limit_template.replace("$offset",str(offset))
             offset+=limit
             results+= self.run_sparql(query_limit)
-        # print(results)
+#        print(results)
         for result in results:
             uri = result['?term']
             if not uri in self.labels:
@@ -606,3 +628,4 @@ class Endpoint:
             triples+= f"<{uri}> <http://www.w3.org/2000/01/rdf-schema#range> <{range}>.\n"
 
         return triples
+

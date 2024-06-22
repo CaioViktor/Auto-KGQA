@@ -51,9 +51,11 @@ class QuestionHandler:
         if last_question != None:
             hist_questions = last_question+"\n "+question
         triples,needed_nodes,needed_properties = self.getRelatedTriples(hist_questions,self.t_box_index)
+        # print(triples)
         if self.a_box_index != None:
             # print("a_box_index")
             triples2,nodes,properties= self.getRelatedTriples(hist_questions,self.a_box_index,number_hops,limit_by_property)
+            # print(triples2)
             needed_nodes += nodes
             triples+= triples2
         if filter_graph and len(triples) > 0:

@@ -1,5 +1,5 @@
 from nltk.tokenize import sent_tokenize, word_tokenize 
-from configs import MAX_SCORE_PARSER_TRIPLES
+from configs import MAX_SCORE_PARSER_TRIPLES_FAISS,MIN_SCORE_PARSER_TRIPLES_WOOSH
 from functools import reduce
 
 def chooseHit(hits,delta_score,delta_count):
@@ -11,7 +11,7 @@ def chooseHit(hits,delta_score,delta_count):
     for hit in hits:
         score = hit['score']
         count = hit['count']
-        rank = (((score/delta_score) * 2 ) + (count/delta_count))/3
+        rank = (((score/delta_score) * 2 ) + (count/delta_count))/3 if delta_count > 0 else (score/delta_score)
         hit['rank'] = rank
         # print(f"{hit}\t {(score/delta_score)} + {(count/delta_count)}")
         # print(f"{url}:{count}")
@@ -20,7 +20,7 @@ def chooseHit(hits,delta_score,delta_count):
             selected_rank = rank
             selected = hit
     # print("Selected: "+str(selected))
-    if selected['score'] < MAX_SCORE_PARSER_TRIPLES:
+    if selected['score'] < MIN_SCORE_PARSER_TRIPLES_WOOSH:
         return None
     return selected
 
@@ -87,7 +87,7 @@ def parser_sentence(sentence,index,endpoint):
                     selected_hit = select_hit_woosh(resultSearch,endpoint)
                 elif index.type == "FAISS":
                     selected_hit = resultSearch[0]
-                    if selected_hit['score'] > MAX_SCORE_PARSER_TRIPLES:
+                    if selected_hit['score'] > MAX_SCORE_PARSER_TRIPLES_FAISS:
                         selected_hit = None
                 if selected_hit != None and not selected_hit in matchs:
                     # print(f"Escolheu: {selected_hit}")

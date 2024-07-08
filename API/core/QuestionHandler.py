@@ -8,7 +8,7 @@ import re
 from context.ContextLLM import *
 # from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain_community.embeddings import SentenceTransformerEmbeddings
-from configs import NUMBER_HOPS,LIMIT_BY_PROPERTY,FILTER_GRAPH,RELEVANCE_THRESHOLD,MAX_HITS_RATE,PRINT_HITS,TEMPERATURE_TRANSLATE,TEMPERATURE_SELECT,TEMPERATURE_FINAL_ANSWER
+from configs import NUMBER_HOPS,LIMIT_BY_PROPERTY,FILTER_GRAPH,RELEVANCE_THRESHOLD,MAX_HITS_RATE,PRINT_HITS,TEMPERATURE_TRANSLATE,TEMPERATURE_SELECT,TEMPERATURE_FINAL_ANSWER,USE_A_BOX_INDEX
 
 #OpenAI
 load_dotenv()
@@ -43,7 +43,7 @@ class QuestionHandler:
             triples+= self.endpoint.describe(match["content"]["?term"],number_hops,limit_by_property)
         return triples,nodes,properties
 
-    def getRelevantGraph(self,question,number_hops=NUMBER_HOPS,limit_by_property=LIMIT_BY_PROPERTY,filter_graph= FILTER_GRAPH,last_question=None):
+    def getRelevantGraph(self,question,number_hops=NUMBER_HOPS,limit_by_property=LIMIT_BY_PROPERTY,filter_graph= FILTER_GRAPH,last_question=None,use_a_box_index=USE_A_BOX_INDEX):
         self.endpoint.visited_nodes = set()
         needed_nodes = []
         needed_properties = []
@@ -51,13 +51,13 @@ class QuestionHandler:
         if last_question != None:
             hist_questions = last_question+"\n "+question
         triples,needed_nodes,needed_properties = self.getRelatedTriples(hist_questions,self.t_box_index)
-        # print(triples)
-        if self.a_box_index != None:
+        if use_a_box_index and self.a_box_index != None:
             # print("a_box_index")
             triples2,nodes,properties= self.getRelatedTriples(hist_questions,self.a_box_index,number_hops,limit_by_property)
-            # print(triples2)
             needed_nodes += nodes
             triples+= triples2
+        # print("needed_nodes:"+str(needed_nodes))
+        # print("needed_properties:"+str(needed_properties))
         if filter_graph and len(triples) > 0:
             # print(triples)#aqui
             filter_triples = Filter_Triples(triples,self.embedding_function,relevance_threshold = RELEVANCE_THRESHOLD, max_hits_rate=MAX_HITS_RATE)
@@ -69,8 +69,8 @@ class QuestionHandler:
         return ttl
     
 
-    def textToSPARQL(self,question,ttl):
-        self.messagesTranslater.changeGraph(ttl)
+    def textToSPARQL(self,question,ttl,rag=None):
+        self.messagesTranslater.changeGraph(ttl,rag=rag)
         self.messagesChooseBest.changeGraph(ttl)
         self.messagesTranslater.add({"role":"user","content":question})
         self.generalConversation.add({"role":"user","content":question})

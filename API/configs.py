@@ -1,17 +1,19 @@
-ENDPOINT_T_BOX_URL = "http://localhost:7200/repositories/artigo"
+ENDPOINT_T_BOX_URL = "http://localhost:8890/sparql"
 ENDPOINT_A_BOX_URL = None #Comment this line and use the one below if T-Box and A-Box are on different endpoints
 # ENDPOINT_A_BOX_URL = "http://localhost:7200/repositories/artigo"
 
 DATASET_FILE = "questions_dataset.csv" #File name for query persistence and feedback
 
-NUMBER_HOPS = 2 # Number of hops in neighborhood in the prefetch step to retrieve the the relevant triples for the selected resource
-LIMIT_BY_PROPERTY = -1 # Maximum number of triple for each property in the prefetch step to retrieve the the relevant triples for the selected resource. Set -1 for retrieve all values for each property
-MAX_SCORE_PARSER_TRIPLES = 0.85
+NUMBER_HOPS = 5 # Number of hops in neighborhood in the prefetch step to retrieve the the relevant triples for the selected resource
+LIMIT_BY_PROPERTY = 1 # Maximum number of triple for each property in the prefetch step to retrieve the the relevant triples for the selected resource. Set -1 for retrieve all values for each property
+MAX_SCORE_PARSER_TRIPLES_FAISS = 0.85
+MIN_SCORE_PARSER_TRIPLES_WOOSH = 0.95
 
 INDEX_T_BOX = "FAISS" # Value "FAISS": Index based in vector distance using langchain.faiss; "WHOOSH": Index based in text similarity using whoosh; "SPOTLIGHT"
+USE_A_BOX_INDEX = False
 INDEX_A_BOX = "WHOOSH" # Value "FAISS": Index based in vector distance using langchain.faiss; "WHOOSH": Index based in text similarity using whoosh; "SPOTLIGHT"
 
-LLM_MODEL = "gpt-4o" # Exemples: "gpt-3.5-turbo","gpt-3.5-turbo-16k","gpt-4","gpt-4o"
+LLM_MODEL = "gpt-4o" # Exemples: "gpt-3.5-turbo","gpt-3.5-turbo-16k","gpt-4","gpt-4o","gpt-4-turbo"
 TEMPERATURE_TRANSLATE = 1
 SIZE_CONTEXT_WINDOW_TRANSLATE = 7
 TEMPERATURE_SELECT = 0.3

@@ -38,20 +38,23 @@ class ContextTranslator(ContextDialog):
         super().__init__(length,language)
         self.changeGraph(graph)
     
-    def changeGraph(self,graph):
+    def changeGraph(self,graph,rag=None):
         self.system = []
+        rag_text = ""
+        if rag:
+            rag_text = "Here are some sample related questions accompanied by their queries to help you:\n"+rag+"\n"
         if self.language == "en":
             self.system.append({"role":"system","content":"Consider the following RDF graph written in Turtle syntax: "+str(graph)})
             # self.system.append({"role":"system","content":"""Write a SPARQL query for the question given by the user using only classes and properties defined in the RDF graph, for this is important to use the same URIs for the properties and classes as defined in the original graph. Also remember to include the prefixes. Moreover declare non-essential properties to the question as OPTIONAL if needed. Declare filters on strings (like labels and names) as filters operations over REGEX function using the case insensitive flag, for example use '''?a rdfs:label ?name. FILTER(REGEX(?name,"[VALUE NAME]","i"))''' instead of '''?a rdfs:label "[VALUE NAME]".''' ."""})
             self.system.append({"role":"system","content":f"""Write a SPARQL query for the question given by the user following the restrictions: \n{self.restrictions}
-                Example:
-                    Question: 'Who is Caio?'
-                    Answer: ```sparql
-                        SELECT ?caio ?name WHERE{{
-                            ?caio rdfs:label ?name.
-                            FILTER(REGEX(?name,"Caio","i"))
-                        }}```
-                            """})
+Example:
+    Question: 'Who is Caio?'
+    Answer: ```sparql
+        SELECT ?caio ?name WHERE{{
+            ?caio rdfs:label ?name.
+            FILTER(REGEX(?name,"Caio","i"))
+        }}```
+{rag_text}                    """})
         elif self.language ==  "pt":
             self.system.append({"role":"system","content":"Considere o seguinte grafo RDF escrito na sintaxe Turtle: "+str(graph)})
             self.system.append({"role":"system","content":"""Escreva uma consulta SPARQL para a questão dada pelo usuário utilizando apenas classes e propriedades definidas no grafo RDF, para isso é importante utilizar as mesmas URIs para as propriedades e classes como definidas no grafo original. Também é importante lembrar de incluir os prefixos. Além disso, declare propriedades não essenciais para a questão como como OPTINAL se necessárias. Declare filtros sobre strings (como labels e nomes) como operações de filtros sobre funções REGEX usando a flaf case insensitive, por exemplo use '''?a rdfs:label ?name. FILTER(REGEX(?name,"[VALUE NAME]","i"))''' ao invés de '''?a rdfs:label "[VALUE NAME]".'''"""})

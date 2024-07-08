@@ -35,8 +35,8 @@ def countTokens(input):
 
 
 
-question = "What is John's age?" #Natural Language Question
-
+# question = "What is John's age?" #Natural Language Question
+question = "What is the most common Knowledge representation method?" #Natural Language Question
 print(f"Question: "+question)
 
 qa = QuestionHandler(endpoint_a_box,t_box_index,normalizer,a_box_index=a_box_index,model_name=LLM_MODEL)

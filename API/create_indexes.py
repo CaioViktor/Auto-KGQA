@@ -42,10 +42,11 @@ def createIndexes():
     print("T-Box index created: "+str(t_box_index.exists()) + " Type: "+t_box_index.type)
     print("-----------------------------------------------------------")
 
-    print("Creating A-Box index")
-    a_box_index = ABoxIndex(endpoint_a_box,normalizer)
-    print("A-Box index created: "+str(a_box_index.exists()) + " Type: "+a_box_index.type)
-    print("-----------------------------------------------------------")
+    if USE_A_BOX_INDEX:
+        print("Creating A-Box index")
+        a_box_index = ABoxIndex(endpoint_a_box,normalizer)
+        print("A-Box index created: "+str(a_box_index.exists()) + " Type: "+a_box_index.type)
+        print("-----------------------------------------------------------")
 
     print("Saving T-Box Endpoint labels cache...")
     endpoint_t_box.save_labels()
@@ -55,7 +56,7 @@ def createIndexes():
     endpoint_t_box.save_counts()
     print("T-Box Endpoint counts Saved")
 
-    if endpoint_a_box != endpoint_t_box:
+    if USE_A_BOX_INDEX and endpoint_a_box != endpoint_t_box:
         print("Saving A-Box Endpoint labels cache...")
         endpoint_a_box.save_labels()
         print("A-Box Endpoint labels Saved")

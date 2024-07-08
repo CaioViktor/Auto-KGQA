@@ -2,11 +2,9 @@ from rdflib import Graph
 from rdflib.util import guess_format
 from rdflib.plugins.sparql.results.jsonresults import JSONResultSerializer
 from SPARQLWrapper import SPARQLWrapper, JSON
-from re import finditer,findall
+from re import finditer,findall,sub
 import os
 import pickle 
-import io
-from io import StringIO, BytesIO
 from sparql.Utils import getGraph
 from configs import NUMBER_HOPS,LIMIT_BY_PROPERTY
 import xmltodict
@@ -76,16 +74,23 @@ class Endpoint:
         # print(var)
         if 'literal' in var:
             if type(var["literal"]) is dict:
-                if "@datatype" in var["literal"]:
-                    value = f'\"{str(var["literal"]["#text"])}\"^^<{str(var["literal"]["@datatype"])}>'
+                if "#text" in var["literal"]:
+                    var["literal"]["#text"] = var["literal"]["#text"].replace('\"',"\'")
+                    if "@datatype" in var["literal"]:
+                        value = f'\"{str(var["literal"]["#text"])}\"^^<{str(var["literal"]["@datatype"])}>'
+                    else:
+                        value = f'{str(var["literal"]["#text"])}'
                 else:
-                    value = f'{str(var["literal"]["#text"])}'
+                    value = ""
             else:
+                var["literal"] = var["literal"].replace('\"',"\'")
                 try: 
                     float(var["literal"])
                     value = f'\"{str(var["literal"])}\"^^<http://www.w3.org/2001/XMLSchema#float>'
                 except ValueError: 
                     value = f'{str(var["literal"])}'
+                    if value.lower() == "false" or value.lower() == "true":
+                        value = f'"{value.lower()}"^^<http://www.w3.org/2001/XMLSchema#boolean>'
         else:
             value = str(var["uri"])
         return value
@@ -102,15 +107,28 @@ class Endpoint:
                 for result in results["results"]["bindings"]:
                     result_item = {}
                     for var in result:
+                        value = result[var]["value"].replace('"',"'")
+                        if value.lower() == "false" or value.lower() == "true":
+                            value = value.lower()
                         if 'datatype' in result[var]:
-                            result_item["?"+var] = f'\"{str(result[var]["value"])}\"^^<{str(result[var]["datatype"])}>'
+                            if str(result[var]["datatype"])=="http://localhost:8890/null":
+                                if value.lower() == "false" or value.lower() == "true":
+                                    result[var]["datatype"] = "http://www.w3.org/2001/XMLSchema#boolean"
+                                else:
+                                    try:
+                                        float(var)
+                                        result[var]["datatype"] = "http://www.w3.org/2001/XMLSchema#float"
+                                    except:
+                                        result[var]["datatype"] = "http://www.w3.org/2001/XMLSchema#string"
+                            result_item["?"+var] = f'\"{str(value)}\"^^<{str(result[var]["datatype"])}>'
                         else:
-                            result_item["?"+var] = str(result[var]["value"])
+                            result_item["?"+var] = str(value)
                     result_set.append(result_item)
             else:
                 #Enpoint is a local file
                 results= self.run_sparql_rdflib(query)
                 results = xmltodict.parse(results.serialize())
+                # print(results)
                 if results["sparql"]["results"] == None:
                     return result_set
                 if type(results["sparql"]["results"]["result"]) is dict:
@@ -126,8 +144,11 @@ class Endpoint:
                 else:
                     for result in results["sparql"]["results"]["result"]:
                         result_item = {}
-                        for var in result["binding"]:
-                            result_item["?"+var["@name"]] = self.parse_value_redflib_result(var)
+                        if type(result["binding"]) is list:
+                            for var in result["binding"]:
+                                result_item["?"+var["@name"]] = self.parse_value_redflib_result(var)
+                        else:
+                            result_item["?"+result["binding"]["@name"]] = self.parse_value_redflib_result(result["binding"])
                         result_set.append(result_item)
             return result_set
         except Exception as e:
@@ -225,10 +246,17 @@ class Endpoint:
                     elif self.filterAxiomsTriples(triple["?o"]):
                         next_nodes.add(triple["?o"])
                 else:#Datatype Property
+                    if triple["?o"] != '""^^<http://www.w3.org/2001/XMLSchema#string>' and triple["?o"] != '""':
+                        triple["?o"] = sub('\"{2,}','"',triple["?o"])
                     if "^^" in triple["?o"]: #has datatype
+                        if "\n" in triple["?o"]:
+                            triple["?o"] = triple["?o"].replace('"','"""')
                         describe += f"""<{uri}> <{triple["?p"]}> {triple["?o"]}.\n"""
                     else:
-                        describe += f"""<{uri}> <{triple["?p"]}> "{triple["?o"]}".\n"""
+                        if "\n" in triple["?o"]:
+                            describe += f'<{uri}> <{triple["?p"]}> """{triple["?o"]}""".\n'
+                        else:
+                            describe += f"""<{uri}> <{triple["?p"]}> "{triple["?o"]}".\n"""
         #ingoing properties
         query = f"""SELECT DISTINCT ?s ?p WHERE{{
             ?s ?p <{uri}>.
@@ -551,7 +579,8 @@ class Endpoint:
         results = self.run_sparql(query)
         classes = []
         for result in results:
-            classes.append(result["?class"])
+            if "?class" in result: 
+                classes.append(result["?class"])
         return classes
     
     def get_resource_comments(self,uri):
@@ -598,7 +627,10 @@ class Endpoint:
         
         for label in labels:
             if label[1] != 'URI':
-                triples+= f"<{uri}> <{label[1]}> \"{label[0]}\".\n"
+                if '"^^' not in label[0]:
+                    triples+= f"<{uri}> <{label[1]}> \"{label[0]}\".\n"
+                else:
+                    triples+= f"<{uri}> <{label[1]}> {label[0]}.\n"
 
         classes = self.get_resource_class(uri)
         for classe in classes:
@@ -608,13 +640,19 @@ class Endpoint:
             labels = self.get_labels(str(classe))
             for label in labels:
                 if label[1] != 'URI':
-                    triples+= f"<{str(classe)}> <{label[1]}> \"{label[0]}\".\n"
+                    if '"^^' not in label[0]:
+                        triples+= f"<{str(classe)}> <{label[1]}> \"{label[0]}\".\n"
+                    else:
+                        triples+= f"<{str(classe)}> <{label[1]}> {label[0]}.\n"
             comments_str = ""
             comments = self.get_resource_comments(str(classe))
             for comment in comments:
                 comments_str+=comment+" "
             if comments_str != "":
-                triples+= f"<{str(classe)}> <http://www.w3.org/2000/01/rdf-schema#comment> \"{comments_str}\".\n"
+                if '"^^' not in comments_str:
+                    triples+= f"<{str(classe)}> <http://www.w3.org/2000/01/rdf-schema#comment> \"{comments_str}\".\n"
+                else:
+                    triples+= f"<{str(classe)}> <http://www.w3.org/2000/01/rdf-schema#comment> {comments_str}.\n"
         return triples
     
     def get_metada_property(self,uri):

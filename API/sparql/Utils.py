@@ -4,6 +4,7 @@ from io import StringIO
 import re
 
 def getGraph(triples):
+    triples = triples.replace("\\&","")
     str_in = StringIO(triples)
     g = Graph()
     g.parse(str_in, format='n3')
@@ -44,10 +45,15 @@ def list_to_string_triples(triples):
         if triple[2].__class__ == URIRef:
             triples_str+=f"<{triple[2]}>.\n"
         else:
-            if triple[2].datatype:
-                triples_str+=f"\"{triple[2]}\"^^<{triple[2].datatype}>.\n"
+            value = str(triple[2])
+            if "\n" in value:
+                value = '"""'+value+'"""'
             else:
-                triples_str+=f"\"{triple[2]}\".\n"
+                value = '"'+value+'"'
+            if triple[2].datatype:
+                triples_str+=f"{value}^^<{triple[2].datatype}>.\n"
+            else:
+                triples_str+=f"{value}.\n"
     return triples_str
 
 def list_to_rdf_graph(triples):
@@ -57,7 +63,10 @@ def list_to_rdf_graph(triples):
         if triple[2].__class__ == URIRef:
             triples_str+=f"<{triple[2]}>.\n"
         else:
-            triples_str+=f"\"{triple[2]}\"^^<{triple[2].datatype}>.\n"
+            value = f"\"{triple[2]}\"^^<{triple[2].datatype}>.\n"
+            if "\n" in value:
+                value = value.replace('"','"""')
+            triples_str+= value
     graph = getGraph(triples_str)
     return graph
 

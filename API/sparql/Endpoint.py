@@ -510,6 +510,8 @@ class Endpoint:
     def struct_result_query(self,sparql):
         try:
             query_results = self.run_sparql(sparql)
+            if len(query_results) > 10:
+                query_results = query_results[:10]
             question_formulated = f'''
                 {{"query":"```sparql\n{sparql}\n```",
                 "result": {query_results} }}

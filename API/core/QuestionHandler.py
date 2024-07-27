@@ -15,8 +15,9 @@ load_dotenv()
 client = OpenAI()
 
 class QuestionHandler:
-    def __init__(self,endpoint,t_box_index,normalizer,messagesTranslater=ContextTranslator(""),messagesNL=ContextNLGenerator(),generalConversation=ContextDialog(),messagesChooseBest = ContextChooseBestSPARQL(""),a_box_index=None,model_name="gpt-3.5-turbo-16k") -> None:
+    def __init__(self,endpoint,endpoint_t_box,t_box_index,normalizer,messagesTranslater=ContextTranslator(""),messagesNL=ContextNLGenerator(),generalConversation=ContextDialog(),messagesChooseBest = ContextChooseBestSPARQL(""),a_box_index=None,model_name="gpt-3.5-turbo-16k") -> None:
         self.endpoint = endpoint
+        self.endpoint_t_box = endpoint_t_box
         self.t_box_index = t_box_index
         self.normalizer = normalizer
         self.messagesTranslater = messagesTranslater
@@ -58,6 +59,7 @@ class QuestionHandler:
             triples+= triples2
         # print("needed_nodes:"+str(needed_nodes))
         # print("needed_properties:"+str(needed_properties))
+        triples+= self.endpoint_t_box.get_all_triples() #Put all relevant T-Box's triples in the selected triples set
         if filter_graph and len(triples) > 0:
             # print(triples)#aqui
             filter_triples = Filter_Triples(triples,self.embedding_function,relevance_threshold = RELEVANCE_THRESHOLD, max_hits_rate=MAX_HITS_RATE)

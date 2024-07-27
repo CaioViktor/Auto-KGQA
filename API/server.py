@@ -1,6 +1,3 @@
-from sparql.Endpoint import Endpoint
-from nlp.normalizer import *
-# from index.whoosh_index import *
 from configs import *
 from persistence.Questions_Dataset import Questions_Dataset
 from flask import Flask,render_template,request, redirect, url_for, jsonify
@@ -11,24 +8,14 @@ import os.path
 from index.import_index import *
 
 from core.ChatHandler import ChatHandler
+from core.Configs_loader import load_configs
 
 
-
-#Normalizer
-normalizer = Normalizer()
-
-#T-Box
-endpoint_t_box = Endpoint(ENDPOINT_T_BOX_URL)
-t_box_index = TBoxIndex(endpoint_t_box,normalizer)
-
-#A-Box
-endpoint_a_box = endpoint_t_box
-if ENDPOINT_A_BOX_URL and ENDPOINT_T_BOX_URL != ENDPOINT_A_BOX_URL:
-    endpoint_a_box = Endpoint(ENDPOINT_A_BOX_URL)
-a_box_index = ABoxIndex(endpoint_a_box,normalizer)
+#KG endpoints and indexes
+normalizer, endpoint_t_box, t_box_index, endpoint_a_box, a_box_index = load_configs()
 
 #ChatHadler
-chatHandler = ChatHandler(endpoint_a_box,t_box_index,normalizer,a_box_index)
+chatHandler = ChatHandler(endpoint_a_box,endpoint_t_box,t_box_index,normalizer,a_box_index,)
 
 #Question Dataset
 if os.path.isfile(DATASET_FILE):

@@ -16,6 +16,7 @@ class Index:
         self.embedding_function = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
         if not os.path.isdir(path_index):
             print("Creating new index...")
+            os.makedirs(path_index)
             self.loadTerms(endpoint)
             self.index = self.create()
             print("New index created!")

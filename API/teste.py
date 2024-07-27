@@ -1,31 +1,18 @@
 import tiktoken
-import pandas as pd
 from configs import *
 from core.QuestionHandler import QuestionHandler
 from dotenv import load_dotenv
 from nlp.normalizer import *
-from sparql.Endpoint import Endpoint
 from datetime import datetime
-#Import T-Box index
-from index.import_index import *
 
 from core.ChatHandler import ChatHandler
+from core.Configs_loader import load_configs
 
 #OpenAI
 load_dotenv()
 
-#Normalizer
-normalizer = Normalizer()
-
-#T-Box
-endpoint_t_box = Endpoint(ENDPOINT_T_BOX_URL)
-t_box_index = TBoxIndex(endpoint_t_box,normalizer)
-
-#A-Box
-endpoint_a_box = endpoint_t_box
-if ENDPOINT_A_BOX_URL and ENDPOINT_T_BOX_URL != ENDPOINT_A_BOX_URL:
-    endpoint_a_box = Endpoint(ENDPOINT_A_BOX_URL)
-a_box_index = ABoxIndex(endpoint_a_box,normalizer)
+#KG endpoints and indexes
+normalizer, endpoint_t_box, t_box_index, endpoint_a_box, a_box_index = load_configs()
 
 def countTokens(input):
     encoding = tiktoken.encoding_for_model(LLM_MODEL)
@@ -35,11 +22,11 @@ def countTokens(input):
 
 
 
-# question = "What is John's age?" #Natural Language Question
-question = "What is the most common Knowledge representation method?" #Natural Language Question
+question = "What is John's age?" #Natural Language Question
+# question = "What is the most common Knowledge representation method?" #Natural Language Question
 print(f"Question: "+question)
 
-qa = QuestionHandler(endpoint_a_box,t_box_index,normalizer,a_box_index=a_box_index,model_name=LLM_MODEL)
+qa = QuestionHandler(endpoint_a_box,endpoint_t_box,t_box_index,normalizer,a_box_index=a_box_index,model_name=LLM_MODEL)
 # result = qa.processQuestion(question)
 # print(f"consulta  finalizada: "+result['answer'])
 

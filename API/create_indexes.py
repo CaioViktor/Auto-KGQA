@@ -1,5 +1,6 @@
 from sparql.Endpoint import Endpoint
 from nlp.normalizer import *
+from sparql.Generator_T_Box import Generator_T_Box
 # from index.whoosh_index import *
 from configs import *
 from index.import_index import *
@@ -23,15 +24,26 @@ def createIndexes():
         shutil.rmtree("index/temp/a_box_index/"+INDEX_A_BOX.lower())
         print("Old index removed: index/temp/a_box_index/"+INDEX_A_BOX.lower())
 
+
+    
+    print("Creating A-Box endpoint")
+    endpoint_a_box = Endpoint(ENDPOINT_KNOWLEDGE_GRAPH_URL)
+    print("-----------------------------------------------------------")
+
+    if EXTRACT_T_BOX:
+        print("Extracting T-Box...")
+        t_box_generator = Generator_T_Box(endpoint_a_box)
+        triples_full_ttl = t_box_generator.generate_t_box()
+        print("Triples in T-Box extracted: "+ str(len(triples_full_ttl.splitlines())))
+        with open(ENDPOINT_T_BOX_URL,"w") as t_box_file:
+            t_box_file.write(triples_full_ttl)
+        print("T-Box saved to: "+ENDPOINT_T_BOX_URL)
+
     print("Creating T-Box endpoint")
     endpoint_t_box = Endpoint(ENDPOINT_T_BOX_URL)
     print("-----------------------------------------------------------")
 
-    endpoint_a_box = endpoint_t_box
-    if ENDPOINT_A_BOX_URL and ENDPOINT_T_BOX_URL != ENDPOINT_A_BOX_URL:
-        print("Creating A-Box endpoint")
-        endpoint_a_box = Endpoint(ENDPOINT_A_BOX_URL)
-        print("-----------------------------------------------------------")
+    
 
     print("Creating Normalizer")
     normalizer = Normalizer()

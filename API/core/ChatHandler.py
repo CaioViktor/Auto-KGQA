@@ -1,9 +1,10 @@
 from core.QuestionHandler import QuestionHandler
 from configs import LLM_MODEL
 class ChatHandler:
-    def __init__(self,endpoint,t_box_index,normalizer,a_box_index=None):
+    def __init__(self,endpoint,endpoint_t_box,t_box_index,normalizer,a_box_index=None):
         self.chats = {}
         self.endpoint = endpoint
+        self.endpoint_t_box = endpoint_t_box
         self.t_box_index = t_box_index
         self.normalizer = normalizer
         self.a_box_index = a_box_index
@@ -13,7 +14,7 @@ class ChatHandler:
         if id in self.chats:
             return self.chats[id]
         else:
-            qa = QuestionHandler(self.endpoint,self.t_box_index,self.normalizer,a_box_index=self.a_box_index,model_name=LLM_MODEL)
+            qa = QuestionHandler(self.endpoint,self.endpoint_t_box,self.t_box_index,self.normalizer,a_box_index=self.a_box_index,model_name=LLM_MODEL)
             self.chats[id] = qa
             return qa
         

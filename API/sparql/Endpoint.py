@@ -29,8 +29,6 @@ class Endpoint:
             self.load_counts()
             print("Counts on endpoint cache loaded!")
 
-        
-
     def save_labels(self):
         with open(self.path_labels,"wb") as file:
             pickle.dump(self.labels, file)
@@ -156,6 +154,23 @@ class Endpoint:
             print(traceback.format_exc())
             print(query)
             return None
+        
+    def get_all_triples(self):
+        triples = ""
+        query = """SELECT DISTINCT * WHERE{ ?a ?b ?c}"""
+        results = self.run_sparql(query)
+        for triple_ in results:
+            triple = f"<{triple_['?a']}> <{triple_['?b']}> "
+            if '"' in triple_['?c']:
+                triple+=triple_['?c']
+            elif 'http:' in triple_['?c']:
+                triple+=f"<{triple_['?c']}>"
+            else:
+                triple+=f'"{triple_["?c"]}"'
+            triple+=".\n"
+            triples+=triple
+        return triples
+
     
     def getOneResource(self,uri):
         query = f"""SELECT * WHERE{{
@@ -306,48 +321,29 @@ class Endpoint:
         PREFIX dcterms: <http://purl.org/dc/terms/>
         PREFIX dbo: <http://dbpedia.org/ontology/>
         PREFIX dbp: <http://dbpedia.org/property/>
+        prefix kgqa: <http://www.kgqa.com/>
         SELECT DISTINCT ?term ?type ?label ?property ?qtd WHERE {{
             {{
                 ?term a owl:Class.
                 BIND("class" as ?type)
-                {{
-                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
-                        [] rdf:type ?term.
-                    }} GROUP BY ?term
-                }}
+                
             }}UNION{{
                 ?term a rdfs:Class.
                 BIND("class" as ?type)
-                {{
-                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
-                        [] rdf:type ?term.
-                    }} GROUP BY ?term
-                }}
+                
             }}UNION{{
                 ?term a rdf:Property.
                 BIND("property" as ?type)
-                {{
-                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
-                        [] ?term [].
-                    }} GROUP BY ?term
-                }}
+               
             }}UNION{{
                 ?term a owl:DatatypeProperty.
                 BIND("property" as ?type)
-                {{
-                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
-                        [] ?term [].
-                    }} GROUP BY ?term
-                }}
+                
             }}
             UNION{{
                 ?term a owl:ObjectProperty.
                 BIND("property" as ?type)
-                {{
-                    SELECT ?term (COUNT(*) as ?qtd) WHERE{{ 
-                        [] ?term [].
-                    }} GROUP BY ?term
-                }}
+                
             }}
         FILTER(!REGEX(STR(?term),"http://www.w3.org/2002/07/owl#","i"))
         FILTER(!REGEX(STR(?term),"http://www.w3.org/2000/01/rdf-schema#","i"))
@@ -371,6 +367,10 @@ class Endpoint:
                 
             }}
             BIND(COALESCE(?label1,?term) as ?label)
+            OPTIONAL{{
+                ?term kgqa:count ?qtd1.
+            }}
+            BIND(COALESCE(?qtd1, 1) as ?qtd)
         }}
         """
         # print(query)
@@ -384,7 +384,7 @@ class Endpoint:
             query_limit = query_limit_template.replace("$offset",str(offset))
             offset+=limit
             results+= self.run_sparql(query_limit)
-#        print(results)
+        # print(results)
         for result in results:
             uri = result['?term']
             if not uri in self.labels:
@@ -510,6 +510,8 @@ class Endpoint:
     def struct_result_query(self,sparql):
         try:
             query_results = self.run_sparql(sparql)
+            if len(query_results) > 10:
+                query_results = query_results[:10]
             question_formulated = f'''
                 {{"query":"```sparql\n{sparql}\n```",
                 "result": {query_results} }}

@@ -315,3 +315,5 @@
 <Update/JohnDoe/20880101> rdf:type tlo:Remove_Relationship;
     tlo:uri_object <JackSmith>;
     tlo:property <knows>.
+
+<Test> a owl:Class.

@@ -1,5 +1,5 @@
 ENDPOINT_KNOWLEDGE_GRAPH_URL = "../Demo/ontology_example.ttl" # Knowledge graph endpoint can be a triples store http endpoint URL or a filepath containing the triples.
-# ENDPOINT_A_BOX_URL = "http://localhost:7200/repositories/artigo"
+# ENDPOINT_KNOWLEDGE_GRAPH_URL = "http://localhost:7200/repositories/databricks"
 EXTRACT_T_BOX = True # The script will perform queries on ENDPOINT_KNOWLEDGE_GRAPH_URL to extract the necessary information that would form the T-Box. The triples will be saved in the file ENDPOINT_T_BOX_URL. If you already have the T-Box separated, set this value to False.
 ENDPOINT_T_BOX_URL = "sparql/temp/t_box.ttl" # Change this line only if you already have the T-Box separated, you need to set EXTRACT_T_BOX = False. Set the value to a local file when extracting the T-Box
 

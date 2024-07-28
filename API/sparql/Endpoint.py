@@ -5,7 +5,7 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 from re import finditer,findall,sub
 import os
 import pickle 
-from sparql.Utils import getGraph
+from sparql.Utils import getGraph,is_valid_uri
 from configs import NUMBER_HOPS,LIMIT_BY_PROPERTY
 import xmltodict
 import traceback
@@ -185,6 +185,8 @@ class Endpoint:
                     """
         # print(query)
         result = self.run_sparql(query)
+        if len(result) <= 0:
+            return ""
         resourceUri = result[0]["?r"]
         triples = self.describe_(resourceUri,0,2)[0]
         return triples
@@ -245,7 +247,8 @@ class Endpoint:
         for triple in triples:
             # print(triple)
             if self.filterProperty(triple["?p"]):
-                if 'http' in triple["?o"] and not "^^" in triple["?o"]:#Object Property
+                # if 'http' in triple["?o"] and not "^^" in triple["?o"]:#Object Property
+                if is_valid_uri(triple["?o"]):
                     # print(triple)
                     if self.filterSelfEquivalenceAxioms(uri,triple["?p"],triple["?o"]):
                         describe += f"""<{uri}> <{triple["?p"]}> <{triple["?o"]}>.\n"""
@@ -295,7 +298,7 @@ class Endpoint:
         if number_hops > 0:
             number_hops-=1
             for next_node in next_nodes:
-                if next_node not in self.visited_nodes:
+                if next_node not in self.visited_nodes and is_valid_uri(next_node):
                     describe += self.describe_(next_node,number_hops,limit_by_property)[0]
         return describe,is_class
     

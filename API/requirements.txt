@@ -16,3 +16,4 @@ Whoosh==2.7.4
 sentence-transformers==2.2.2
 faiss-cpu==1.7.4
 xmltodict==0.13.0
+validators==0.33.0

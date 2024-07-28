@@ -2,6 +2,7 @@ from rdflib import Graph
 from rdflib.term import URIRef
 from io import StringIO
 import re
+import validators
 
 def getGraph(triples):
     triples = triples.replace("\\&","")
@@ -149,3 +150,10 @@ def getUris_from_query(q):
 
     uris = uris_explicit + uris_implicit
     return list(set(uris)),q
+
+def is_valid_uri(text):
+    if " " in text:
+        return False
+    if not text.startswith("http"):
+        return False
+    return validators.url(text)

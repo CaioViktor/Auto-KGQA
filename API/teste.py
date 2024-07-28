@@ -23,6 +23,7 @@ def countTokens(input):
 
 
 question = "What is John's age?" #Natural Language Question
+# question = "List the air flows" #Natural Language Question
 # question = "What is the most common Knowledge representation method?" #Natural Language Question
 print(f"Question: "+question)
 

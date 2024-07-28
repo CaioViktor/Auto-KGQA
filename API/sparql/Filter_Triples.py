@@ -2,7 +2,7 @@
 from langchain_community.vectorstores import FAISS
 from rdflib.term import Literal,URIRef
 from rdflib.extras.external_graph_libs import rdflib_to_networkx_multidigraph
-from sparql.Utils import getGraph, isLabel, list_to_rdf_graph, edges_to_triples, uris_list_to_rdflib_refs_list
+from sparql.Utils import getGraph, isLabel, list_to_rdf_graph, edges_to_triples, uris_list_to_rdflib_refs_list,is_valid_uri
 import networkx as nx
 from sparql.Endpoint  import Endpoint
 import warnings
@@ -113,7 +113,8 @@ class Filter_Triples:
             selected_triples += complementary_triples
             properties = properties.union(complementary_properties)
             for node in sub_graph.nodes:
-                if ("http" in str(node)) and (not "^^" in str(node)):
+                # if ("http" in str(node)) and (not "^^" in str(node)):
+                if is_valid_uri(node):
                     nodes.add(node)
 
             # get metada for resources and classes in the selected triples
